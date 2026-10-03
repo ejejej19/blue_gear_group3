@@ -297,9 +297,80 @@
     return out;
   }
 
+  /* ---------- 個人額度帳本：總額、已用、剩餘，以及回收／購買 ---------- */
+
+  /** 交易規則：回收價低於購買價，差價留在公共能源池 */
+  const TRADE = {
+    recyclePrice: 8,   // 每回收 1 單位，得到的金額（元）
+    buyPrice: 10,      // 每購買 1 單位，要付的金額（元）
+    startBalance: 5,   // 初始擁有金額（元）
+  };
+
+  /**
+   * allocated: 制度分配給我的額度；used: 本期已用；trades: { bought, recycled }
+   * 總額 = 制度分配（購買與回收都不改變總額）
+   * 可用 = 總額 + 已購買；剩餘 = 可用 − 已用 − 已回收（負值代表超用）
+   */
+  function ledger(allocated, used, trades) {
+    const bought = (trades && trades.bought) || 0;
+    const recycled = (trades && trades.recycled) || 0;
+    const deposited = (trades && trades.deposited) || 0;
+    const total = allocated;
+    const available = total + bought;
+    const remaining = available - used - recycled;
+    return {
+      allocated, bought, recycled, deposited, used, total, available,
+      remaining: Math.max(0, remaining),
+      overuse: Math.max(0, -remaining),
+      earned: recycled * TRADE.recyclePrice,  // 累計回收收入
+      spent: bought * TRADE.buyPrice,         // 累計購買支出
+      // 目前擁有金額 = 初始金額 + 儲值 + 回收收入 − 購買支出
+      balance: TRADE.startBalance + deposited + recycled * TRADE.recyclePrice - bought * TRADE.buyPrice,
+    };
+  }
+
+  /**
+   * 檢查並執行一筆交易，回傳 { ok, message, trades }（trades 為交易後的新紀錄）
+   * mode: 'recycle' | 'buy' | 'deposit'；amount: 輸入的額度（儲值為金額）；L: 目前的 ledger
+   */
+  function trade(mode, amount, L) {
+    const amt = Number(amount);
+    const keep = { bought: L.bought, recycled: L.recycled, deposited: L.deposited || 0 };
+    if (mode === 'deposit') {
+      if (!Number.isFinite(amt) || amt <= 0) return { ok: false, message: '請輸入大於 0 的儲值金額', trades: keep };
+      return {
+        ok: true,
+        message: `成功儲值 ${amt.toFixed(2)} 元。擁有金額 ${L.balance.toFixed(2)} → ${(L.balance + amt).toFixed(2)} 元`,
+        trades: { ...keep, deposited: keep.deposited + amt },
+      };
+    }
+    const label = mode === 'recycle' ? '回收' : '購買';
+    if (!Number.isFinite(amt) || amt <= 0) {
+      return { ok: false, message: `請輸入大於 0 的${label}額度`, trades: keep };
+    }
+    if (mode === 'recycle') {
+      if (amt > L.remaining + 1e-9) return { ok: false, message: '回收失敗，剩餘額度不足', trades: keep };
+      const price = amt * TRADE.recyclePrice;
+      return {
+        ok: true,
+        message: `成功回收 ${amt.toFixed(2)} 單位，獲得 ${price.toFixed(2)} 元。剩餘額度 ${L.remaining.toFixed(2)} → ${(L.remaining - amt).toFixed(2)}，擁有金額 ${L.balance.toFixed(2)} → ${(L.balance + price).toFixed(2)} 元`,
+        trades: { ...keep, recycled: L.recycled + amt },
+      };
+    }
+    const price = amt * TRADE.buyPrice;
+    if (price > L.balance + 1e-9) {
+      return { ok: false, message: '擁有金額不足，請先儲值或降低購買額度', trades: keep };
+    }
+    return {
+      ok: true,
+      message: `成功購買 ${amt.toFixed(2)} 單位，支付 ${price.toFixed(2)} 元。已購買額度 ${L.bought.toFixed(2)} → ${(L.bought + amt).toFixed(2)}，擁有金額 ${L.balance.toFixed(2)} → ${(L.balance - price).toFixed(2)} 元`,
+      trades: { ...keep, bought: L.bought + amt },
+    };
+  }
+
   const EnergyModel = {
-    DEFAULT_REGIONS, METHODS, METRICS, VALUE_PRESETS, OCCUPATIONS, SPECIAL_NEEDS,
-    basicNeed, output, gini, lorenz, evaluate, simulate, score, personal,
+    DEFAULT_REGIONS, METHODS, METRICS, VALUE_PRESETS, OCCUPATIONS, SPECIAL_NEEDS, TRADE,
+    basicNeed, output, gini, lorenz, evaluate, simulate, score, personal, ledger, trade,
     allocateEqual, allocateNeed, allocateEfficient, allocateHybrid,
   };
 

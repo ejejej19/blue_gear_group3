@@ -101,4 +101,81 @@ console.log('個人視角');
   });
 }
 
+console.log('額度帳本');
+test('總額 = 制度分配（購買、回收都不改變）；剩餘 = 總額 + 已購買 − 已用 − 已回收', () => {
+  const l = M.ledger(2, 1.2, { bought: 0.5, recycled: 0.3 });
+  assert(close(l.total, 2));
+  assert(close(l.available, 2.5));
+  assert(close(l.remaining, 1.0));
+  assert(close(l.overuse, 0));
+});
+test('超用時剩餘為 0、顯示超用量', () => {
+  const l = M.ledger(1, 1.5, {});
+  assert(close(l.remaining, 0));
+  assert(close(l.overuse, 0.5));
+});
+test('收入與支出：回收 × 回收價、購買 × 購買價', () => {
+  const l = M.ledger(1, 0, { bought: 1, recycled: 2 });
+  assert(close(l.earned, 2 * M.TRADE.recyclePrice));
+  assert(close(l.spent, M.TRADE.buyPrice));
+});
+test('回收額度 > 剩餘額度 → 回收失敗，紀錄不變', () => {
+  const L = M.ledger(2, 1.5, {});            // 剩餘 0.5
+  const r = M.trade('recycle', 0.8, L);
+  assert(!r.ok);
+  assert.strictEqual(r.message, '回收失敗，剩餘額度不足');
+  assert(close(r.trades.recycled, 0));
+});
+test('回收額度 ≤ 剩餘額度 → 成功，從剩餘額度扣除', () => {
+  const L = M.ledger(2, 1.5, {});
+  const r = M.trade('recycle', 0.5, L);
+  assert(r.ok && r.message.startsWith('成功回收'));
+  const after = M.ledger(2, 1.5, r.trades);
+  assert(close(after.remaining, 0));
+  assert(close(after.total, 2));       // 總額不變
+  assert(close(after.recycled, 0.5));
+});
+test('購買 → 成功，累計到已購買額度，總額不變、剩餘增加', () => {
+  const L = M.ledger(2, 1.5, {});
+  const r = M.trade('buy', 0.3, L);   // 3 元，在初始金額內
+  assert(r.ok && r.message.startsWith('成功購買'));
+  const after = M.ledger(2, 1.5, r.trades);
+  assert(close(after.total, 2));
+  assert(close(after.bought, 0.3));
+  assert(close(after.remaining, 0.8));
+});
+test('回收後再購買：剩餘額度 = 總額 − 已用 − 已回收', () => {
+  const l = M.ledger(2, 1, { recycled: 0.4, bought: 0.3 });
+  assert(close(l.total, 2));
+  assert(close(l.remaining, 0.9));
+});
+test('擁有金額：初始金額 + 回收收入 − 購買支出', () => {
+  const l = M.ledger(2, 0, { recycled: 1, bought: 0.5 });
+  assert(close(l.balance, M.TRADE.startBalance + M.TRADE.recyclePrice - 0.5 * M.TRADE.buyPrice));
+});
+test('購買總價 > 擁有金額 → 警告並不執行', () => {
+  const L = M.ledger(2, 0, {});
+  const tooMuch = M.TRADE.startBalance / M.TRADE.buyPrice + 0.1;
+  const r = M.trade('buy', tooMuch, L);
+  assert(!r.ok);
+  assert.strictEqual(r.message, '擁有金額不足，請先儲值或降低購買額度');
+  assert(close(r.trades.bought, 0));
+  assert(M.trade('buy', M.TRADE.startBalance / M.TRADE.buyPrice, L).ok); // 剛好買得起
+});
+test('儲值：增加擁有金額，之後就買得起', () => {
+  const L = M.ledger(2, 0, {});
+  assert(!M.trade('buy', 1, L).ok);                 // 10 元 > 5 元
+  const d = M.trade('deposit', 20, L);
+  assert(d.ok && d.message.startsWith('成功儲值'));
+  const after = M.ledger(2, 0, d.trades);
+  assert(close(after.balance, M.TRADE.startBalance + 20));
+  assert(M.trade('buy', 1, after).ok);
+  assert(!M.trade('deposit', 0, L).ok);
+});
+test('輸入 0 或非數字 → 不執行', () => {
+  const L = M.ledger(2, 1.5, {});
+  assert(!M.trade('buy', 0, L).ok);
+  assert(!M.trade('recycle', 'abc', L).ok);
+});
+
 console.log(`\n全部 ${passed} 項測試通過`);
