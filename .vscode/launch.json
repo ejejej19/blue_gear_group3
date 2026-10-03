@@ -1,0 +1,24 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "開啟模擬器（Chrome）",
+      "type": "chrome",
+      "request": "launch",
+      "file": "${workspaceFolder}/index.html"
+    },
+    {
+      "name": "開啟模擬器（Edge）",
+      "type": "msedge",
+      "request": "launch",
+      "file": "${workspaceFolder}/index.html"
+    },
+    {
+      "name": "執行模型測試（Node）",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/tests/model.test.js",
+      "console": "integratedTerminal"
+    }
+  ]
+}
