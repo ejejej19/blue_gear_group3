@@ -12,6 +12,28 @@
       <h1>2056 能源分配模擬器</h1>
       <p class="subtitle">能源過剩之後，問題不是「夠不夠」，而是「怎麼分」。</p>
     </div>
+    <div class="wallet-box">
+      <div class="balance" aria-live="polite">
+        <span class="balance-label">目前擁有金額</span>
+        <span class="balance-value" id="balance"></span>
+      </div>
+      <button type="button" class="btn-primary" id="depositBtn" aria-expanded="false" aria-controls="depositPanel">儲值</button>
+      <div class="deposit-panel panel" id="depositPanel" hidden>
+        <div class="section-head"><h2>儲值</h2><button type="button" class="btn-link" id="depositClose">關閉</button></div>
+        <label class="amount">
+          <span>儲值金額</span>
+          <input type="number" id="depositAmt" min="0" step="1" placeholder="0" inputmode="decimal" />
+          <span class="unit">元</span>
+        </label>
+        <div class="quick" id="depositQuick">
+          <button type="button" data-v="5">+5</button>
+          <button type="button" data-v="10">+10</button>
+          <button type="button" data-v="50">+50</button>
+        </div>
+        <button type="button" class="btn-primary" id="confirmDeposit">確定儲值</button>
+        <div class="alert" id="depositMsg" role="status" hidden></div>
+      </div>
+    </div>
   </header>
 
   <div class="layout">
@@ -51,6 +73,60 @@
         <p class="hint" id="meNote"></p>
       </section>
 
+      <section class="panel trade">
+        <div class="section-head">
+          <div class="head-left">
+            <h2>額度交易</h2>
+            <span class="trade-msg" id="tradeMsg" role="status" hidden></span>
+          </div>
+          <span class="trade-log"><span class="hint" id="tradeSummary"></span><button type="button" class="btn-link" id="resetTrade" hidden>清除交易紀錄</button></span>
+        </div>
+        <div class="trade-options" role="radiogroup">
+          <div class="option" id="optRecycle">
+            <label class="option-head">
+              <input type="radio" name="tradeMode" value="recycle" />
+              <span class="option-title">回收剩餘額度</span>
+              <span class="option-desc">把用不完的額度還給公共能源池，換取金額。</span>
+            </label>
+            <div class="option-body">
+              <div class="body-row">
+                <label class="amount">
+                  <span>回收額度</span>
+                  <input type="number" id="recycleAmt" min="0" step="0.05" placeholder="0.00" inputmode="decimal" />
+                  <span class="unit">單位</span>
+                </label>
+                <span class="avail" id="recycleAvail"></span>
+              </div>
+              <div class="calc-row">
+                <div class="calc" id="recycleCalc"></div>
+                <button type="button" class="btn-primary" id="confirmRecycle">確定回收</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="option" id="optBuy">
+            <label class="option-head">
+              <input type="radio" name="tradeMode" value="buy" />
+              <span class="option-title">購買額外額度</span>
+              <span class="option-desc">從公共能源池購買額度，用擁有金額支付。</span>
+            </label>
+            <div class="option-body">
+              <div class="body-row">
+                <label class="amount">
+                  <span>購買額度</span>
+                  <input type="number" id="buyAmt" min="0" step="0.05" placeholder="0.00" inputmode="decimal" />
+                  <span class="unit">單位</span>
+                </label>
+                <span class="avail" id="buyAvail"></span>
+              </div>
+              <div class="calc-row">
+                <div class="calc" id="buyCalc"></div>
+                <button type="button" class="btn-primary" id="confirmBuy">確定購買</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
     </main>
   </div>
 
