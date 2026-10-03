@@ -59,6 +59,13 @@
           <span class="hint" id="usedHint"></span>
         </label>
       </div>
+
+      <div class="group next-month">
+        <div class="month-nav">
+          <button type="button" class="btn-secondary" id="prevMonth" disabled>← 上一個月</button>
+          <button type="button" class="btn-primary" id="nextMonth">下一個月 →</button>
+        </div>
+      </div>
     </aside>
 
     <!-- ===== 結果 ===== -->
@@ -66,6 +73,7 @@
       <section class="panel me">
         <div class="section-head">
           <h2>我的能源</h2>
+          <span class="month-tag" id="monthTag"></span>
         </div>
         <div class="stats" id="meStats"></div>
         <div id="meChart" class="chart"></div>
@@ -74,6 +82,7 @@
       </section>
 
       <section class="panel trade">
+        <div class="ro-overlay" id="historyBanner" role="status" hidden></div>
         <div class="section-head">
           <div class="head-left">
             <h2>額度交易</h2>
@@ -131,6 +140,7 @@
   </div>
 
   <div id="tooltip" class="tooltip" role="tooltip" hidden></div>
+  <div class="toast alert ok" id="toast" role="status" hidden></div>
 
   <script src="js/model.js"></script>
   <script src="js/charts.js"></script>

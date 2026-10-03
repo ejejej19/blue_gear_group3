@@ -315,17 +315,18 @@
     const bought = (trades && trades.bought) || 0;
     const recycled = (trades && trades.recycled) || 0;
     const deposited = (trades && trades.deposited) || 0;
+    const opening = trades && trades.opening != null ? trades.opening : TRADE.startBalance; // 本月期初金額
     const total = allocated;
     const available = total + bought;
     const remaining = available - used - recycled;
     return {
-      allocated, bought, recycled, deposited, used, total, available,
+      allocated, bought, recycled, deposited, opening, used, total, available,
       remaining: Math.max(0, remaining),
       overuse: Math.max(0, -remaining),
       earned: recycled * TRADE.recyclePrice,  // 累計回收收入
       spent: bought * TRADE.buyPrice,         // 累計購買支出
-      // 目前擁有金額 = 初始金額 + 儲值 + 回收收入 − 購買支出
-      balance: TRADE.startBalance + deposited + recycled * TRADE.recyclePrice - bought * TRADE.buyPrice,
+      // 目前擁有金額 = 本月期初金額 + 儲值 + 回收收入 − 購買支出
+      balance: opening + deposited + recycled * TRADE.recyclePrice - bought * TRADE.buyPrice,
     };
   }
 
@@ -335,7 +336,7 @@
    */
   function trade(mode, amount, L) {
     const amt = Number(amount);
-    const keep = { bought: L.bought, recycled: L.recycled, deposited: L.deposited || 0 };
+    const keep = { bought: L.bought, recycled: L.recycled, deposited: L.deposited || 0, opening: L.opening };
     if (mode === 'deposit') {
       if (!Number.isFinite(amt) || amt <= 0) return { ok: false, message: '請輸入大於 0 的儲值金額', trades: keep };
       return {
@@ -368,9 +369,23 @@
     };
   }
 
+  /**
+   * 進入下一個月：以本月的分配總額為基礎，再加上本月購買額度的一半。
+   * 額外需求逐月累加（例：第 1 月買 1 → 第 2 月 +0.5；第 2 月再買 1 → 第 3 月共 +1）。
+   * 已用、已購買、已回收都歸零；擁有金額保留，成為下個月的期初金額。
+   * extra: 本月已累計的額外需求
+   */
+  function nextMonth(L, extra) {
+    return {
+      extra: (extra || 0) + L.bought / 2,
+      trades: { bought: 0, recycled: 0, deposited: 0, opening: L.balance },
+      used: 0,
+    };
+  }
+
   const EnergyModel = {
     DEFAULT_REGIONS, METHODS, METRICS, VALUE_PRESETS, OCCUPATIONS, SPECIAL_NEEDS, TRADE,
-    basicNeed, output, gini, lorenz, evaluate, simulate, score, personal, ledger, trade,
+    basicNeed, output, gini, lorenz, evaluate, simulate, score, personal, ledger, trade, nextMonth,
     allocateEqual, allocateNeed, allocateEfficient, allocateHybrid,
   };
 

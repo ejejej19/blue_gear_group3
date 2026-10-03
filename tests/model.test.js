@@ -172,6 +172,30 @@ test('儲值：增加擁有金額，之後就買得起', () => {
   assert(M.trade('buy', 1, after).ok);
   assert(!M.trade('deposit', 0, L).ok);
 });
+test('下一個月：購買額度的一半變成額外需求，其他額度歸零，金額保留', () => {
+  const L = M.ledger(2, 1.2, { bought: 0.4, recycled: 0.1, deposited: 10 });
+  const n = M.nextMonth(L);
+  assert(close(n.extra, 0.2));
+  assert.strictEqual(n.used, 0);
+  const next = M.ledger(2 + n.extra, n.used, n.trades);
+  assert(close(next.total, 2.2));
+  assert(close(next.bought, 0) && close(next.recycled, 0) && close(next.deposited, 0));
+  assert(close(next.balance, L.balance));          // 擁有金額帶到下個月
+  assert(close(next.remaining, 2.2));
+});
+test('額外需求逐月累加：第 1 月買 1 → +0.5；第 2 月再買 1 → 共 +1；第 3 月沒買 → 維持 +1', () => {
+  const base = 1.6;
+  let extra = 0;
+  let L = M.ledger(base + extra, 0, { bought: 1 });
+  extra = M.nextMonth(L, extra).extra;
+  assert(close(extra, 0.5));
+  L = M.ledger(base + extra, 0, { bought: 1 });
+  extra = M.nextMonth(L, extra).extra;
+  assert(close(extra, 1));
+  L = M.ledger(base + extra, 0, {});
+  extra = M.nextMonth(L, extra).extra;
+  assert(close(extra, 1));
+});
 test('輸入 0 或非數字 → 不執行', () => {
   const L = M.ledger(2, 1.5, {});
   assert(!M.trade('buy', 0, L).ok);

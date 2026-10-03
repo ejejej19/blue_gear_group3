@@ -208,8 +208,6 @@ table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nu
 }
 
 /* ---------- 額度交易 ---------- */
-/* 避免捲軸出現或消失時整個版面左右跳動 */
-html { scrollbar-gutter: stable; }
 :root { --good: #0ca30c; }
 .trade-options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; align-items: start; }
 .option {
@@ -283,6 +281,38 @@ html { scrollbar-gutter: stable; }
   .trade-options { grid-template-columns: 1fr; }
   .option-body { padding-left: 16px; }
 }
+
+/* ---------- 月份 ---------- */
+.month-tag { font-size: 13px; font-weight: 600; color: var(--text-secondary); background: var(--surface-2); border-radius: 999px; padding: 2px 12px; }
+.month-nav { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+.month-nav button { padding: 10px 0; font-size: 14px; }
+.btn-secondary {
+  font: inherit; font-weight: 600; cursor: pointer; border-radius: 8px;
+  background: var(--surface-1); color: var(--accent); border: 1.5px solid var(--accent);
+}
+.btn-secondary:hover:not(:disabled) { background: var(--surface-2); }
+.btn-secondary:disabled, .btn-primary:disabled {
+  cursor: not-allowed; background: var(--surface-2); color: var(--text-muted); border-color: var(--border); filter: none;
+}
+.toast {
+  position: fixed; left: 24px; bottom: 24px; z-index: 30; max-width: 360px; margin: 0;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+/* 避免捲軸出現或消失時整個版面左右跳動 */
+html { scrollbar-gutter: stable; }
+
+/* ---------- 查看紀錄（唯讀） ---------- */
+.trade { position: relative; }
+.ro-overlay {
+  position: absolute; inset: 0; z-index: 5; border-radius: var(--radius);
+  display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px;
+  background: color-mix(in srgb, var(--surface-1) 82%, transparent);
+  color: var(--text-secondary); font-weight: 600; line-height: 1.7;
+}
+.ro-overlay[hidden] { display: none; }
+.month-tag.history { background: color-mix(in srgb, var(--extra) 18%, var(--surface-1)); color: var(--text-primary); }
+input:disabled, select:disabled { opacity: .6; cursor: not-allowed; }
+.read-only #depositBtn { opacity: .5; }
 
 @media (max-width: 560px) {
   .trade-log .hint { display: none; }          /* 手機上把空間留給結果提示 */
