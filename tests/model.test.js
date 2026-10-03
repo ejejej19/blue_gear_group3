@@ -57,4 +57,48 @@ test('價值權重會改變排名（效率優先 vs 保障優先）', () => {
   console.log(`    效率優先 → ${eff}，保障優先 → ${sec}`);
 });
 
+console.log('個人視角');
+{
+  const sim = M.simulate(regions, { energyMultiplier: 1.5, minRight: 1, industryShare: 0.5 });
+  const base = { regionId: 'remote', occupation: 'general', special: [] };
+  const me = M.personal(regions, sim, base);
+  const sick = M.personal(regions, sim, { ...base, special: ['lifeSupport'] });
+
+  test('一般人在需求制下的分配 = 地區人均', () => {
+    const r = regions.find((x) => x.id === 'remote');
+    const i = regions.indexOf(r);
+    assert(close(me.methods.B.total, sim.results.B.alloc[i] / r.pop));
+  });
+
+  test('可支配 + 基本用途 = 總量（無缺口時）', () => {
+    for (const id of ['A', 'B', 'C', 'D']) {
+      const m = me.methods[id];
+      assert(close(m.basicUse + m.disposable, m.total));
+      assert(close(m.basicUse + m.shortfall, me.myNeed));
+    }
+  });
+
+  test('特殊需求：需求制與兩層制會照顧，平均制與效率制不會', () => {
+    assert(sick.myNeed > me.myNeed);
+    assert(sick.methods.B.total > me.methods.B.total);
+    assert(sick.methods.D.total > me.methods.D.total);
+    assert(close(sick.methods.A.total, me.methods.A.total));
+    assert(close(sick.methods.C.total, me.methods.C.total));
+  });
+
+  test('兩層制：能源足夠時，最低能源權完全覆蓋個人基本需求', () => {
+    assert(sick.methods.D.sources.need >= sick.myNeed - 1e-9);
+    assert(close(sick.methods.D.shortfall, 0));
+  });
+
+  test('職業只影響效率制（產業能源）的部分', () => {
+    // 偏鄉產值低，效率制不分產業能源給它，所以用都會核心比較
+    const me = M.personal(regions, sim, { ...base, regionId: 'metro' });
+    const worker = M.personal(regions, sim, { ...base, regionId: 'metro', occupation: 'industry' });
+    assert(worker.methods.D.sources.efficiency > me.methods.D.sources.efficiency);
+    assert(close(worker.methods.D.sources.need, me.methods.D.sources.need));
+    assert(close(worker.methods.A.total, me.methods.A.total));
+  });
+}
+
 console.log(`\n全部 ${passed} 項測試通過`);

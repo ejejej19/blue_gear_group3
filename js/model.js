@@ -239,9 +239,67 @@
     return { scores, ranking, norm };
   }
 
+  /* ---------- 個人視角：我分到多少、從哪來、能自由支配多少 ---------- */
+
+  /** 職業：決定能分到多少「產業能源（效率制）」——產業能源透過工作取得 */
+  const OCCUPATIONS = [
+    { id: 'industry', name: '產業／製造業', weight: 2.0 },
+    { id: 'general',  name: '服務業／一般工作', weight: 1.0 },
+    { id: 'public',   name: '公共服務（醫療、教育）', weight: 1.0 },
+    { id: 'none',     name: '學生／退休／待業', weight: 0.5 },
+  ];
+
+  /** 特殊需求：提高個人的基本能源需求（以人均需求單位加計） */
+  const SPECIAL_NEEDS = [
+    { id: 'lifeSupport', name: '維生醫療設備（e.g.洗腎、呼吸器）', extra: 1.5 },
+    { id: 'mobility',    name: '高齡或行動不便', extra: 0.4 },
+    { id: 'infant',      name: '照顧嬰幼兒', extra: 0.3 },
+  ];
+
+  /**
+   * 計算某個人在四種制度下分到的能源。
+   * 假設：個人資料不改變地區總量（一個人相對全體可忽略），只決定這個人在地區內分到的份額。
+   *   需求制部分 → 依「個人基本需求」等比例分（特殊需求會被照顧）
+   *   平均制部分 → 地區人均
+   *   效率制部分 → 地區人均 × 職業係數（產業工作者分得多）
+   * profile: { regionId, occupation, special: [id...] }
+   */
+  function personal(regions, sim, profile) {
+    const i = Math.max(0, regions.findIndex((r) => r.id === profile.regionId));
+    const r = regions[i];
+    const occ = OCCUPATIONS.find((o) => o.id === profile.occupation) || OCCUPATIONS[1];
+    const extra = sum(SPECIAL_NEEDS.filter((s) => (profile.special || []).includes(s.id)).map((s) => s.extra));
+    const myNeed = r.need + extra;
+    const regionNeed = basicNeed(r);
+    const perNeed = (x) => (regionNeed > 0 ? (x / regionNeed) * myNeed : 0);
+    const perCap = (x) => (r.pop > 0 ? x / r.pop : 0);
+    const R = sim.results;
+    const L = R.D.layers;
+
+    const sources = {
+      A: { equal: perCap(R.A.alloc[i]), need: 0, efficiency: 0 },
+      B: { equal: 0, need: perNeed(R.B.alloc[i]), efficiency: 0 },
+      C: { equal: 0, need: 0, efficiency: perCap(R.C.alloc[i]) * occ.weight },
+      D: { equal: perCap(L.public[i]), need: perNeed(L.layer1[i]), efficiency: perCap(L.industry[i]) * occ.weight },
+    };
+    const out = { region: r, regionIndex: i, occupation: occ, myNeed, extraNeed: extra, methods: {} };
+    for (const id of Object.keys(sources)) {
+      const s = sources[id];
+      const total = s.equal + s.need + s.efficiency;
+      out.methods[id] = {
+        sources: s,
+        total,
+        basicUse: Math.min(total, myNeed),          // 必須用在基本需求的部分
+        disposable: Math.max(0, total - myNeed),    // 可自由支配的額度
+        shortfall: Math.max(0, myNeed - total),     // 基本需求缺口
+      };
+    }
+    return out;
+  }
+
   const EnergyModel = {
-    DEFAULT_REGIONS, METHODS, METRICS, VALUE_PRESETS,
-    basicNeed, output, gini, lorenz, evaluate, simulate, score,
+    DEFAULT_REGIONS, METHODS, METRICS, VALUE_PRESETS, OCCUPATIONS, SPECIAL_NEEDS,
+    basicNeed, output, gini, lorenz, evaluate, simulate, score, personal,
     allocateEqual, allocateNeed, allocateEfficient, allocateHybrid,
   };
 
